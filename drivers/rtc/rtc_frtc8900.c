@@ -528,8 +528,11 @@ static int frtc8900_init(const struct device *dev)
 		LOG_WRN("VLF set after power loss — call rtc_set_time() before use");
 	}
 
-	/* Clear all flag bits (datasheet: only 0 can be written to these bits) */
-	ret = frtc8900_write_reg(dev, FRTC8900_REG_FLAG, 0x00);
+	/* Clear AF/TF/UF/VDET but preserve VLF — it must remain set until the
+	 * application calls rtc_set_time() so that rtc_get_time() returns
+	 * -ENODATA instead of silently returning stale/invalid time data.
+	 * Writing 1 to a flag bit is a no-op per the datasheet (only 0 clears). */
+	ret = frtc8900_write_reg(dev, FRTC8900_REG_FLAG, FRTC8900_FLAG_VLF);
 	if (ret < 0) {
 		return ret;
 	}
