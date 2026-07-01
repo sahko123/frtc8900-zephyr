@@ -81,8 +81,8 @@ Then run `west update`.
 ### VLF flag
 After a power loss (VDD dropped below ~1.6 V) or oscillator stop, the VLF flag
 is set and **all registers must be reinitialised**. `rtc_get_time()` returns
-`-ENODATA` when VLF is set. Clear it by calling `rtc_set_time()` with the
-correct time, then re-read.
+`-ENODATA` when VLF is set. Calling `rtc_set_time()` with the correct time
+automatically clears VLF; subsequent `rtc_get_time()` calls will succeed.
 
 ### Alarm AE bits (low-active)
 The FRTC8900 alarm enable bits work inverted relative to most RTCs: `AE=0`

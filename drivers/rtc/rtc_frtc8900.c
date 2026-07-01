@@ -194,6 +194,10 @@ static int frtc8900_set_time(const struct device *dev,
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 	ret = frtc8900_write_block(dev, buf, sizeof(buf));
+	if (ret == 0) {
+		/* Clear VLF (and stale flags) now that a valid time has been set */
+		ret = frtc8900_write_reg(dev, FRTC8900_REG_FLAG, 0x00);
+	}
 	k_mutex_unlock(&data->lock);
 
 	return ret;
@@ -379,6 +383,7 @@ out:
 
 static int frtc8900_alarm_is_pending(const struct device *dev, uint16_t id)
 {
+	struct frtc8900_data *data = dev->data;
 	uint8_t flags;
 	int ret;
 
@@ -386,23 +391,28 @@ static int frtc8900_alarm_is_pending(const struct device *dev, uint16_t id)
 		return -EINVAL;
 	}
 
+	k_mutex_lock(&data->lock, K_FOREVER);
+
 	ret = frtc8900_read_reg(dev, FRTC8900_REG_FLAG, &flags);
 	if (ret < 0) {
-		return ret;
+		goto out;
 	}
 
 	if (!(flags & FRTC8900_FLAG_AF)) {
-		return 0;
+		ret = 0;
+		goto out;
 	}
 
 	/* Clear AF — only 0 can be written to flag bits */
 	ret = frtc8900_write_reg(dev, FRTC8900_REG_FLAG,
 				 flags & ~FRTC8900_FLAG_AF);
-	if (ret < 0) {
-		return ret;
+	if (ret == 0) {
+		ret = 1;
 	}
 
-	return 1;
+out:
+	k_mutex_unlock(&data->lock);
+	return ret;
 }
 
 static void frtc8900_alarm_work_handler(struct k_work *work)
@@ -410,22 +420,31 @@ static void frtc8900_alarm_work_handler(struct k_work *work)
 	struct frtc8900_data *data =
 		CONTAINER_OF(work, struct frtc8900_data, alarm_work);
 	const struct device *dev = data->dev;
+	rtc_alarm_callback cb;
+	void *cb_data;
 	uint8_t flags;
 	int ret;
 
+	k_mutex_lock(&data->lock, K_FOREVER);
+
 	ret = frtc8900_read_reg(dev, FRTC8900_REG_FLAG, &flags);
-	if (ret < 0) {
+	if (ret < 0 || !(flags & FRTC8900_FLAG_AF)) {
+		k_mutex_unlock(&data->lock);
 		return;
 	}
 
-	if (flags & FRTC8900_FLAG_AF) {
-		/* Clear AF before invoking callback */
-		frtc8900_write_reg(dev, FRTC8900_REG_FLAG,
-				   flags & ~FRTC8900_FLAG_AF);
+	/* Clear AF before releasing the lock */
+	frtc8900_write_reg(dev, FRTC8900_REG_FLAG, flags & ~FRTC8900_FLAG_AF);
 
-		if (data->alarm_cb) {
-			data->alarm_cb(dev, 0, data->alarm_cb_data);
-		}
+	/* Snapshot callback under the lock, invoke after — avoids deadlock if
+	 * the callback itself calls back into the RTC API */
+	cb      = data->alarm_cb;
+	cb_data = data->alarm_cb_data;
+
+	k_mutex_unlock(&data->lock);
+
+	if (cb) {
+		cb(dev, 0, cb_data);
 	}
 }
 
