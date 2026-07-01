@@ -63,7 +63,7 @@ manifest:
   projects:
     - name: frtc8900-zephyr
       url: https://github.com/sahko123/frtc8900-zephyr
-      revision: main
+      revision: master
       path: modules/rtc/frtc8900
 ```
 
