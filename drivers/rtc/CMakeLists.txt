@@ -1,0 +1,2 @@
+zephyr_library()
+zephyr_library_sources_ifdef(CONFIG_RTC_FRTC8900 rtc_frtc8900.c)

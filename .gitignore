@@ -1,0 +1,8 @@
+# Datasheets — keep locally, don't publish proprietary vendor documents
+*.pdf
+
+# Zephyr / West build artefacts
+build/
+.west/
+*.pyc
+__pycache__/

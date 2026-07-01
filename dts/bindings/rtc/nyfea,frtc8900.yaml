@@ -1,0 +1,26 @@
+description: |
+  Nyfea FRTC8900 I2C real-time clock with built-in temperature-compensated
+  32.768 kHz DTCXO oscillator. Provides time/calendar, alarm, wakeup timer,
+  and time-update interrupt functions. I2C slave address is fixed at 0x32.
+
+  Example devicetree node:
+
+    &i2c0 {
+        frtc8900: frtc8900@32 {
+            compatible = "nyfea,frtc8900";
+            reg = <0x32>;
+            int-gpios = <&gpio0 0 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+        };
+    };
+
+compatible: "nyfea,frtc8900"
+
+include: [i2c-device.yaml]
+
+properties:
+  int-gpios:
+    type: phandle-array
+    description: |
+      /INT pin (active low, open drain). Required for alarm interrupt support.
+      Connect a pull-up resistor on the PCB; configure GPIO_PULL_UP if no
+      external pull-up is fitted.

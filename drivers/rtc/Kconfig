@@ -1,0 +1,11 @@
+config RTC_FRTC8900
+	bool "Nyfea FRTC8900 RTC driver"
+	default y
+	depends on DT_HAS_NYFEA_FRTC8900_ENABLED
+	select RTC_ALARM
+	select I2C
+	help
+	  Enable driver for the Nyfea FRTC8900 I2C real-time clock module.
+	  Supports time/calendar get/set, alarm interrupt, and voltage-loss
+	  detection. The FRTC8900 includes a built-in temperature-compensated
+	  32.768 kHz oscillator (DTCXO).
